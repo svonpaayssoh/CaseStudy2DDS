@@ -1,0 +1,272 @@
+---
+title: "Case Study 2"
+author: "Samuel Vonpaays Soh"
+date: "2/26/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(caret)
+library(e1071)
+library(class)
+library(skimr)
+library(kableExtra)
+
+url <- "https://raw.githubusercontent.com/BivinSadler/MSDS_6306_Doing-Data-Science/Master/Unit%2014%20and%2015%20Case%20Study%202/CaseStudy2-data.csv"
+url1 <- "https://raw.githubusercontent.com/BivinSadler/MSDS_6306_Doing-Data-Science/Master/Unit%2014%20and%2015%20Case%20Study%202/CaseStudy2CompSet%20No%20Attrition.csv"
+
+casestudy2 <- read.csv(url, stringsAsFactors = TRUE, header = TRUE)
+casestudy2_No_Attrition <- read.csv(url1, stringsAsFactors = TRUE, header = TRUE)
+casestudy2_No_Salary <- read.csv("/Users/samuelvonpaayssoh/Desktop/NoSalary.csv", stringsAsFactors = TRUE, header = TRUE)
+dim(casestudy2)
+dim(casestudy2_No_Attrition)
+dim(casestudy2_No_Salary)
+```
+## 870 rows and 36 columns
+
+## EDA
+```{r }
+colnames(casestudy2)
+colnames(casestudy2_No_Attrition)
+colnames(casestudy2_No_Salary)
+str(casestudy2)
+summary(casestudy2)
+summary(casestudy2_No_Attrition)
+summary(casestudy2_No_Salary)
+```
+
+## Checking N/A or missing values
+
+```{r }
+sum(is.na(casestudy2))
+sum(is.na(casestudy2_No_Attrition))
+sum(is.na(casestudy2_No_Salary))
+```
+## Removing dummy columns:non valuable columns
+```{r }
+casestudy2<- casestudy2 %>% select(-one_of(c("EmployeeCount","EmployeeNumber","StandardHours","Over18")))
+No_Attrition <- casestudy2_No_Attrition %>% select(-one_of(c("EmployeeCount","EmployeeNumber","StandardHours","Over18")))
+No_Salary <- casestudy2_No_Salary %>% select(-one_of(c("EmployeeCount","EmployeeNumber","StandardHours","Over18")))
+colnames(casestudy2)
+dim(casestudy2)
+str(casestudy2)
+str(No_Attrition)
+str(No_Salary)
+```
+## Converting int to factors
+```{r }
+casestudy2$Education <- as.factor(casestudy2$Education)
+casestudy2$EnvironmentSatisfaction <- as.factor(casestudy2$EnvironmentSatisfaction)
+casestudy2$JobInvolvement <- as.factor(casestudy2$JobInvolvement)
+casestudy2$JobLevel <- as.factor(casestudy2$JobLevel)
+casestudy2$JobSatisfaction <- as.factor(casestudy2$JobSatisfaction)
+casestudy2$PerformanceRating <- as.factor(casestudy2$PerformanceRating)
+casestudy2$RelationshipSatisfaction <- as.factor(casestudy2$RelationshipSatisfaction)
+casestudy2$StockOptionLevel <- as.factor(casestudy2$StockOptionLevel)
+casestudy2$TrainingTimesLastYear <- as.factor(casestudy2$TrainingTimesLastYear)
+casestudy2$WorkLifeBalance <- as.factor(casestudy2$WorkLifeBalance)
+
+No_Attrition$Education <- as.factor(No_Attrition$Education)
+No_Attrition$EnvironmentSatisfaction <- as.factor(No_Attrition$EnvironmentSatisfaction)
+No_Attrition$JobInvolvement <- as.factor(No_Attrition$JobInvolvement)
+No_Attrition$JobLevel <- as.factor(No_Attrition$JobLevel)
+No_Attrition$JobSatisfaction <- as.factor(No_Attrition$JobSatisfaction)
+No_Attrition$PerformanceRating <- as.factor(No_Attrition$PerformanceRating)
+No_Attrition$RelationshipSatisfaction <- as.factor(No_Attrition$RelationshipSatisfaction)
+No_Attrition$StockOptionLevel <- as.factor(No_Attrition$StockOptionLevel)
+No_Attrition$TrainingTimesLastYear <- as.factor(No_Attrition$TrainingTimesLastYear)
+No_Attrition$WorkLifeBalance <- as.factor(No_Attrition$WorkLifeBalance)
+
+No_Salary$Education <- as.factor(No_Salary$Education)
+No_Salary$EnvironmentSatisfaction <- as.factor(No_Salary$EnvironmentSatisfaction)
+No_Salary$JobInvolvement <- as.factor(No_Salary$JobInvolvement)
+No_Salary$JobLevel <- as.factor(No_Salary$JobLevel)
+No_Salary$JobSatisfaction <- as.factor(No_Salary$JobSatisfaction)
+No_Salary$PerformanceRating <- as.factor(No_Salary$PerformanceRating)
+No_Salary$RelationshipSatisfaction <- as.factor(No_Salary$RelationshipSatisfaction)
+No_Salary$StockOptionLevel <- as.factor(No_Salary$StockOptionLevel)
+No_Salary$TrainingTimesLastYear <- as.factor(No_Salary$TrainingTimesLastYear)
+No_Salary$WorkLifeBalance <- as.factor(No_Salary$WorkLifeBalance)
+```
+
+```{r}
+str(casestudy2)
+str(No_Attrition)
+str(No_Salary)
+```
+
+```{r}
+casestudy2_numeric <- casestudy2 %>% select_if(is.numeric)
+colnames(casestudy2_numeric)
+```
+##Department Turnover
+```{r , include=TRUE}
+Attrition_Department <- casestudy2 %>% count(Department,Attrition)
+spread(Attrition_Department,Attrition,n) %>% mutate(sum=No+Yes) %>% mutate(attrition_pct=Yes/sum) %>% ggplot(aes(x=Department,y=attrition_pct)) +geom_col()
+```
+## Age Turnover
+```{r , include=TRUE}
+Attrition_by_Age <- casestudy2 %>% count(Age,Attrition)
+spread(Attrition_by_Age,Attrition,n) %>% mutate(sum=No+Yes) %>% mutate(attrition_pct=Yes/sum) %>% ggplot(aes(x=Age , y=attrition_pct)) +geom_point() +geom_smooth(method="loess") +ylab("Attrition")
+```
+## Job Satisfaction Turnover
+```{r , include=TRUE}
+Attrition_by_JobSatisfaction <- casestudy2 %>% count(JobSatisfaction,Attrition)
+spread(Attrition_by_JobSatisfaction,Attrition,n) %>% mutate(sum=No+Yes) %>% mutate(attrition_pct=Yes/sum) %>% ggplot(aes(x=JobSatisfaction , y=attrition_pct)) +geom_point() + ylab("Attrition")
+```
+
+## Job Role Turnover
+```{r , include=TRUE}
+Attrition_by_JobRole <- casestudy2 %>% count(JobRole,Attrition)
+spread(Attrition_by_JobRole,Attrition,n) %>% mutate(sum=No+Yes) %>% mutate(attrition_pct=Yes/sum) %>% ggplot(aes(x=reorder(JobRole,-attrition_pct) , y=attrition_pct)) +geom_col() + coord_flip()+ ylab("Attrition")+xlab("Job Role")
+```
+## Working Years Turnover
+```{r , include=TRUE}
+Attrition_by_totalworkingyears <- casestudy2 %>% count(TotalWorkingYears,Attrition)
+spread(Attrition_by_totalworkingyears,Attrition,n) %>% mutate(sum=No+Yes) %>% mutate(attrition_pct=Yes/sum) %>% ggplot(aes(x=TotalWorkingYears , y=attrition_pct)) +geom_point()+ ylab("Attrition")
+```
+## Increased Salary Turnover
+```{r , include=TRUE}
+Attrition_by_salaryincreased <- casestudy2 %>% count(PercentSalaryHike,Attrition)
+spread(Attrition_by_salaryincreased,Attrition,n) %>% mutate(sum=No+Yes) %>% mutate(attrition_pct=Yes/sum) %>% ggplot(aes(x=PercentSalaryHike , y=attrition_pct)) +geom_point()+ ylab("Attrition")
+```
+## Hourly Rate Turnover
+```{r , include=TRUE}
+Attrition_by_hourly <- casestudy2 %>% count(HourlyRate,Attrition)
+spread(Attrition_by_hourly,Attrition,n) %>% mutate(sum=No+Yes) %>% mutate(attrition_pct=Yes/sum) %>% ggplot(aes(x=HourlyRate , y=attrition_pct)) +geom_point()+ ylab("Attrition")
+```
+## Monthly Income Turnover
+```{r , include=TRUE}
+Attrition_by_income <- na.omit(casestudy2) %>% count(MonthlyIncome,Attrition)
+spread(Attrition_by_income,Attrition,n) %>% mutate(sum=No+Yes) %>% mutate(attrition_pct=Yes/sum) %>% ggplot(aes(x=MonthlyIncome ,y=attrition_pct)) +geom_point()+ ylab("Attrition")
+```
+## Overtime Turnover
+```{r , include=TRUE}
+Attrition_by_overtime <- casestudy2 %>% count(OverTime,Attrition)
+spread(Attrition_by_overtime,Attrition,n) %>% mutate(sum=No+Yes) %>% mutate(attrition_pct=Yes/sum) %>% ggplot(aes(x=OverTime , y=attrition_pct)) +geom_col()+ ylab("Attrition")
+```
+
+
+##Naive Bayes model on Age,Job Role, Job Satisfaction, Over Time
+```{r , include=TRUE}
+
+Accuracy_Holder =numeric(100)
+Sensitivity_Holder =numeric(100)
+Specificity_Holder = numeric(100)
+
+for(i in 1: 100)
+  {
+set.seed(i)
+trainIndices=sample(seq(1:length(casestudy2$Age)),round(.85*length(casestudy2$Age)))
+trainNB=casestudy2[trainIndices,]
+testNB=casestudy2[-trainIndices,]
+model=naiveBayes(trainNB[,c("Age","JobRole","JobSatisfaction","OverTime")],factor(trainNB$Attrition,labels = c("No","Yes")))
+CM_NB = confusionMatrix(table(factor(testNB$Attrition, labels = c("No", "Yes")),predict(model,testNB[,c("Age","JobRole","JobSatisfaction","OverTime")])))
+CM_NB
+
+Accuracy_Holder[i] = CM_NB$overall[1]
+Sensitivity_Holder[i] = CM_NB$byClass[1]
+Specificity_Holder[i] = CM_NB$byClass[2]
+}
+
+mean(Accuracy_Holder)
+#Standard Error of the Mean
+#sd(AccHolder)/sqrt(100) 
+mean(Sensitivity_Holder)
+mean(Specificity_Holder)
+
+```
+##KNN
+```{r}
+AccHolder = numeric(100)
+SensHolder = numeric(100)
+SpecHolder = numeric(100)
+csClean <- na.omit(casestudy2)
+splitPerc = .60
+iterations = 100
+numks = 60
+masterAcc = matrix(nrow = iterations, ncol = numks)
+  
+for(j in 1:iterations)
+{
+accs = data.frame(accuracy = numeric(60), k = numeric(60))
+  #set.seed(i)
+
+trainIndices = sample(1:dim(csClean)[1],round(splitPerc * dim(csClean)[1]))
+train = csClean[trainIndices,]
+test = csClean[-trainIndices,]
+for(i in 1:numks)
+{
+classifications = knn(train[,c("JobSatisfaction","Age")],test[,c("JobSatisfaction","Age")],as.factor(train$Attrition), prob = TRUE, k = i)
+table(as.factor(test$Attrition),classifications)
+CM = confusionMatrix(table(as.factor(test$Attrition),classifications))
+masterAcc[j,i]=CM$overall[1]
+}
+}
+
+MeanAcc = colMeans(masterAcc)
+plot(seq(1,numks,1),MeanAcc,type="l")
+which.max(MeanAcc)
+max(MeanAcc)
+#AccHolder = numeric(100)
+#SensHolder = numeric(100)
+#SpecHolder = numeric(100)
+
+for(i in 1:iterations){
+  set.seed(i)
+  trainIndices = sample(1:dim(csClean)[1],round(splitPerc * dim(csClean)[1]))
+  train = csClean[trainIndices,]
+  test = csClean[-trainIndices,]
+  classifications = knn(train[,c("JobSatisfaction","Age")],test[,c("JobSatisfaction","Age")],as.factor(train$Attrition), prob = TRUE, k = 7)
+  table(as.factor(test$Attrition),classifications)
+  CM_KNN = confusionMatrix(table(as.factor(test$Attrition),classifications))
+  AccHolder[i] = CM_KNN$overall[1]
+  SensHolder[i] = CM_KNN$byClass[1]
+  SpecHolder[i] = CM_KNN$byClass[2]
+}
+mean(AccHolder)
+mean(SensHolder)
+mean(SpecHolder)
+```
+
+```{r}
+model=naiveBayes(casestudy2[,c("Age","JobRole","JobSatisfaction","OverTime")],factor(casestudy2$Attrition,labels = c("No","Yes")))
+No_Attrition$Attrition=predict(model,No_Attrition[,c("Age","JobRole","JobSatisfaction","OverTime")])
+Output1 <- No_Attrition 
+write.csv(Output1,file = "/Users/samuelvonpaayssoh/Desktop/Case2PredictionVonPaaysSoh Attrition.csv", row.names=FALSE)
+```
+
+
+```{r}
+
+library(GGally)
+Salaryvars <- c("MonthlyIncome","Age", "Gender", "JobLevel", "JobRole", "BusinessTravel","StockOptionLevel", "TotalWorkingYears")
+casestudy2_Salary <- casestudy2[Salaryvars]
+casestudy2_Salary %>% ggpairs()
+```
+
+```{r}
+trainIndices_salary=sample(1:dim(casestudy2)[1],round(.7*dim(casestudy2)[1]))
+train_salary= casestudy2[trainIndices_salary,]
+test_salary=casestudy2[-trainIndices_salary,]
+fit=lm(MonthlyIncome ~ JobLevel+TotalWorkingYears, data=train_salary)
+summary(fit)
+
+Prediction <- predict(fit, test_salary)
+RMSE(test_salary$MonthlyIncome, Prediction)
+Prediction_Salary <- predict(fit,No_Salary)
+Salary_Output = cbind.data.frame(No_Salary$ID,Prediction_Salary)
+colnames(Salary_Output) <= c("ID","MonthlyIncome")
+write.csv(Salary_Output, file ="/Users/samuelvonpaayssoh/Desktop/Case2PredictionVonPaaysSoh Salary.csv", row.names=FALSE )
+  
+  
+```
+
+```{r}
+
+```
